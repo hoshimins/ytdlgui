@@ -5,9 +5,32 @@ from tkinter import ttk
 import subprocess
 import threading
 import os
+import configparser
+from typing import Tuple, Optional
+
+# 設定ファイルのパス
+CONFIG_FILE = "config.ini"
 
 
-def on_clicked_start_dl_button():
+def load_config() -> configparser.ConfigParser:
+    '''設定ファイルを読み込む'''
+    config = configparser.ConfigParser()
+    if os.path.exists(CONFIG_FILE):
+        config.read(CONFIG_FILE, encoding='utf-8')
+    return config
+
+
+def save_config(output_dir: str) -> None:
+    '''設定ファイルに保存先を保存する'''
+    config = configparser.ConfigParser()
+    config['Settings'] = {
+        'output_directory': output_dir
+    }
+    with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+        config.write(f)
+
+
+def on_clicked_start_dl_button() -> None:
     '''DLボタンが押された時の処理'''
     global url_entry, output_dir_entry, radio_option, pulldown_option
     global start_dl_button, progress_bar
@@ -33,6 +56,9 @@ def on_clicked_start_dl_button():
     start_dl_button.config(state=tk.DISABLED)
     progress_bar.start()
 
+    # 出力先を設定ファイルに保存
+    save_config(output_dir)
+
     # 別スレッドでダウンロード実行
     download_thread = threading.Thread(
         target=download_video,
@@ -42,7 +68,7 @@ def on_clicked_start_dl_button():
     download_thread.start()
 
 
-def download_video(video_url, output_dir):
+def download_video(video_url: str, output_dir: str) -> None:
     '''ダウンロード処理（別スレッド用）'''
     global url_entry, radio_option, pulldown_option
     global start_dl_button, progress_bar
@@ -108,7 +134,7 @@ def download_video(video_url, output_dir):
         progress_bar.stop()
 
 
-def on_clicked_browse_button():
+def on_clicked_browse_button() -> None:
     '''参照ボタンが押された時の処理'''
     global output_dir_entry
 
@@ -118,7 +144,12 @@ def on_clicked_browse_button():
         output_dir_entry.insert(tk.END, directory_path)
 
 
-def create_label_entry_frame(parent, label_text, entry_width, padding_x=(0, 0)):
+def create_label_entry_frame(
+    parent: tk.Widget,
+    label_text: str,
+    entry_width: int,
+    padding_x: Tuple[int, int] = (0, 0)
+) -> Tuple[tk.Frame, tk.Entry]:
     '''ラベルと入力欄を持つframeを作成する'''
     frame = tk.Frame(parent)
     frame.pack(pady=10)
@@ -132,7 +163,7 @@ def create_label_entry_frame(parent, label_text, entry_width, padding_x=(0, 0)):
     return frame, entry
 
 
-def update_pulldown_options():
+def update_pulldown_options() -> None:
     '''pulldown listのオプションを更新する'''
     global radio_option, pulldown_option, pulldown_menu
     selected_radio_option = radio_option.get()
@@ -156,13 +187,13 @@ def update_pulldown_options():
             label='wav', command=lambda: pulldown_option.set('wav'))
 
 
-def update_ytdlp():
+def update_ytdlp() -> None:
     '''yt-dlpの更新'''
     subprocess.run("yt-dlp --rm-cache-dir", shell=True)
     subprocess.run("yt-dlp -U --no-check-certificate", shell=True)
 
 
-def main():
+def main() -> None:
     global url_entry, output_dir_entry, radio_option, pulldown_option, pulldown_menu
     global start_dl_button, progress_bar
 
@@ -182,10 +213,18 @@ def main():
     output_dir_frame, output_dir_entry = create_label_entry_frame(
         window, "OUT:", 50)
 
-    # デフォルトの出力先を設定
-    default_output = os.path.join(os.path.expanduser("~"), "Downloads")
-    if os.path.exists(default_output):
-        output_dir_entry.insert(0, default_output)
+    # 設定ファイルから前回の出力先を読み込む
+    config = load_config()
+    saved_output = config.get('Settings', 'output_directory', fallback=None)
+
+    if saved_output and os.path.exists(saved_output):
+        # 前回の出力先が存在する場合
+        output_dir_entry.insert(0, saved_output)
+    else:
+        # デフォルトの出力先を設定
+        default_output = os.path.join(os.path.expanduser("~"), "Downloads")
+        if os.path.exists(default_output):
+            output_dir_entry.insert(0, default_output)
 
     # 参照ボタン
     browse_button = tk.Button(output_dir_frame, text="参照",
