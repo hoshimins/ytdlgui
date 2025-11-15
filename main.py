@@ -1,20 +1,55 @@
 import tkinter as tk
 from tkinter import messagebox
 from tkinter import filedialog
+from tkinter import ttk
 import subprocess
+import threading
+import os
 
 
 def on_clicked_start_dl_button():
     '''DLボタンが押された時の処理'''
     global url_entry, output_dir_entry, radio_option, pulldown_option
+    global start_dl_button, progress_bar
 
-    video_url = url_entry.get()
-    url_entry.delete(0, tk.END)
+    video_url = url_entry.get().strip()
+
+    # URL入力のバリデーション
+    if not video_url:
+        messagebox.showerror("エラー", "URLを入力してください")
+        return
+
+    # 出力ディレクトリのバリデーション
+    output_dir = output_dir_entry.get().strip()
+    if not output_dir:
+        messagebox.showerror("エラー", "保存先フォルダを指定してください")
+        return
+
+    if not os.path.exists(output_dir):
+        messagebox.showerror("エラー", "指定された保存先フォルダが存在しません")
+        return
+
+    # ボタンを無効化
+    start_dl_button.config(state=tk.DISABLED)
+    progress_bar.start()
+
+    # 別スレッドでダウンロード実行
+    download_thread = threading.Thread(
+        target=download_video,
+        args=(video_url, output_dir),
+        daemon=True
+    )
+    download_thread.start()
+
+
+def download_video(video_url, output_dir):
+    '''ダウンロード処理（別スレッド用）'''
+    global url_entry, radio_option, pulldown_option
+    global start_dl_button, progress_bar
 
     # 出力パスの生成
     output_file_name = r"\%(upload_date)s-%(title)s.%(ext)s"
-    output_dir = output_dir_entry.get()
-    output_path = output_dir + output_file_name
+    output_path = os.path.join(output_dir, output_file_name.lstrip("\\"))
 
     # DLコマンドの生成
     command = [
@@ -54,11 +89,23 @@ def on_clicked_start_dl_button():
 
     # エラーハンドリング
     try:
-        subprocess.run(command)
+        result = subprocess.run(command, timeout=600, capture_output=True, text=True)
+
+        if result.returncode == 0:
+            # 成功時にURLをクリア
+            url_entry.delete(0, tk.END)
+            messagebox.showinfo("ダウンロード完了", "ダウンロードが完了しました！")
+        else:
+            error_msg = result.stderr if result.stderr else "不明なエラー"
+            messagebox.showerror("エラー", f"ダウンロードに失敗しました！\n\n{error_msg}")
+    except subprocess.TimeoutExpired:
+        messagebox.showerror("エラー", "ダウンロードがタイムアウトしました（10分以上経過）")
     except Exception as e:
-        messagebox.showerror("エラー", "ダウンロードに失敗しました！")
-    else:
-        messagebox.showinfo("ダウンロード完了", "ダウンロードが完了しました！")
+        messagebox.showerror("エラー", f"ダウンロードに失敗しました！\n\n{str(e)}")
+    finally:
+        # ボタンを再度有効化
+        start_dl_button.config(state=tk.NORMAL)
+        progress_bar.stop()
 
 
 def on_clicked_browse_button():
@@ -111,19 +158,21 @@ def update_pulldown_options():
 
 def update_ytdlp():
     '''yt-dlpの更新'''
-    subprocess.run("yt-dlp --rm-cache-dir")
-    subprocess.run("yt-dlp -U --no-check-certificate")
+    subprocess.run("yt-dlp --rm-cache-dir", shell=True)
+    subprocess.run("yt-dlp -U --no-check-certificate", shell=True)
 
 
 def main():
     global url_entry, output_dir_entry, radio_option, pulldown_option, pulldown_menu
+    global start_dl_button, progress_bar
 
+    # yt-dlpの更新（起動時に実行）
     update_ytdlp()
 
     # メインウィンドウの作成
     window = tk.Tk()
     window.title("Movie Downloader")
-    window.geometry("400x230")
+    window.geometry("400x280")
 
     # URL入力欄のframe
     input_url_frame, url_entry = create_label_entry_frame(
@@ -132,6 +181,11 @@ def main():
     # 保存先入力欄のframe
     output_dir_frame, output_dir_entry = create_label_entry_frame(
         window, "OUT:", 50)
+
+    # デフォルトの出力先を設定
+    default_output = os.path.join(os.path.expanduser("~"), "Downloads")
+    if os.path.exists(default_output):
+        output_dir_entry.insert(0, default_output)
 
     # 参照ボタン
     browse_button = tk.Button(output_dir_frame, text="参照",
@@ -160,10 +214,25 @@ def main():
     pulldown_menu = tk.OptionMenu(option_frame, pulldown_option, "")
     pulldown_menu.grid(row=1, column=1, padx=20)
 
+    # プルダウンメニューの初期化
+    update_pulldown_options()
+
+    # 進捗バー
+    progress_bar = ttk.Progressbar(window, mode='indeterminate')
+    progress_bar.pack(pady=5, padx=20, fill=tk.X)
+
     # DLボタン
     start_dl_button = tk.Button(
         window, text="ダウンロード", command=on_clicked_start_dl_button)
-    start_dl_button.pack(pady=20)
+    start_dl_button.pack(pady=10)
+
+    # メニューバー（更新機能）
+    menubar = tk.Menu(window)
+    window.config(menu=menubar)
+
+    tools_menu = tk.Menu(menubar, tearoff=0)
+    menubar.add_cascade(label="ツール", menu=tools_menu)
+    tools_menu.add_command(label="yt-dlp更新", command=lambda: threading.Thread(target=update_ytdlp, daemon=True).start())
 
     # イベントループの開始
     window.mainloop()
