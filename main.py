@@ -16,7 +16,22 @@ LOG_FILE = "ytdlgui.log"
 
 # UI定数
 WINDOW_TITLE = "Movie Downloader"
-WINDOW_GEOMETRY = "400x280"
+WINDOW_GEOMETRY = "600x420"
+
+# カラースキーム
+COLOR_BG = "#f5f5f5"
+COLOR_FRAME_BG = "#ffffff"
+COLOR_PRIMARY = "#2196F3"
+COLOR_PRIMARY_HOVER = "#1976D2"
+COLOR_DANGER = "#f44336"
+COLOR_TEXT = "#212121"
+COLOR_TEXT_SECONDARY = "#757575"
+COLOR_BORDER = "#e0e0e0"
+
+# フォント設定
+FONT_MAIN = ("Segoe UI", 10)
+FONT_LABEL = ("Segoe UI", 9)
+FONT_BUTTON = ("Segoe UI", 10, "bold")
 
 # オプション定数
 OPTION_NONE = "オプションなし"
@@ -57,6 +72,8 @@ class DownloaderApp:
         self.window = tk.Tk()
         self.window.title(WINDOW_TITLE)
         self.window.geometry(WINDOW_GEOMETRY)
+        self.window.configure(bg=COLOR_BG)
+        self.window.resizable(False, False)
 
         # ウィジェット変数
         self.url_entry: Optional[tk.Entry] = None
@@ -69,6 +86,7 @@ class DownloaderApp:
 
         # 初期化
         self._setup_icon()
+        self._setup_style()
         self._setup_keyboard_shortcuts()
         self._update_ytdlp()
         self._create_widgets()
@@ -80,6 +98,18 @@ class DownloaderApp:
                 self.window.iconbitmap("icon.ico")
         except Exception:
             pass
+
+    def _setup_style(self) -> None:
+        '''スタイル設定'''
+        style = ttk.Style()
+        style.theme_use('clam')
+
+        # プログレスバーのスタイル
+        style.configure("Custom.Horizontal.TProgressbar",
+                       troughcolor=COLOR_BORDER,
+                       background=COLOR_PRIMARY,
+                       borderwidth=0,
+                       thickness=6)
 
     def _setup_keyboard_shortcuts(self) -> None:
         '''キーボードショートカット設定'''
@@ -113,46 +143,79 @@ class DownloaderApp:
         self._create_option_frame()
 
         # 進捗バー
-        self.progress_bar = ttk.Progressbar(self.window, mode='indeterminate')
-        self.progress_bar.pack(pady=5, padx=20, fill=tk.X)
+        progress_frame = tk.Frame(self.window, bg=COLOR_BG)
+        progress_frame.pack(pady=(0, 15), padx=20, fill=tk.X)
+
+        self.progress_bar = ttk.Progressbar(progress_frame, mode='indeterminate',
+                                           style="Custom.Horizontal.TProgressbar")
+        self.progress_bar.pack(fill=tk.X)
 
         # ダウンロードボタン
+        button_frame = tk.Frame(self.window, bg=COLOR_BG)
+        button_frame.pack(pady=(0, 20))
+
         self.start_dl_button = tk.Button(
-            self.window, text="ダウンロード", command=self.on_download_button_clicked)
-        self.start_dl_button.pack(pady=10)
+            button_frame, text="ダウンロード", command=self.on_download_button_clicked,
+            font=FONT_BUTTON, bg=COLOR_PRIMARY, fg="white",
+            relief=tk.FLAT, padx=40, pady=12, cursor="hand2",
+            activebackground=COLOR_PRIMARY_HOVER, activeforeground="white")
+        self.start_dl_button.pack()
+
+        # ホバー効果
+        self.start_dl_button.bind("<Enter>", lambda e: self.start_dl_button.config(bg=COLOR_PRIMARY_HOVER))
+        self.start_dl_button.bind("<Leave>", lambda e: self.start_dl_button.config(
+            bg=COLOR_PRIMARY if self.start_dl_button['state'] == tk.NORMAL else COLOR_TEXT_SECONDARY))
 
         # メニューバー
         self._create_menu()
 
     def _create_url_frame(self) -> None:
         '''URL入力欄を作成'''
-        frame = tk.Frame(self.window)
-        frame.pack(pady=10)
+        frame = tk.Frame(self.window, bg=COLOR_FRAME_BG, padx=20, pady=15)
+        frame.pack(pady=15, padx=20, fill=tk.X)
 
-        label = tk.Label(frame, text="URL:")
-        label.grid(row=0, column=0, sticky=tk.W)
+        label = tk.Label(frame, text="動画URL", font=FONT_LABEL,
+                        bg=COLOR_FRAME_BG, fg=COLOR_TEXT)
+        label.pack(anchor=tk.W, pady=(0, 5))
 
-        self.url_entry = tk.Entry(frame, width=50)
-        self.url_entry.grid(row=0, column=1, padx=(0, 42))
+        self.url_entry = tk.Entry(frame, font=FONT_MAIN,
+                                  relief=tk.FLAT, bd=1,
+                                  highlightthickness=1,
+                                  highlightbackground=COLOR_BORDER,
+                                  highlightcolor=COLOR_PRIMARY)
+        self.url_entry.pack(fill=tk.X, ipady=6)
 
     def _create_output_dir_frame(self) -> None:
         '''保存先入力欄を作成'''
-        frame = tk.Frame(self.window)
-        frame.pack(pady=10)
+        frame = tk.Frame(self.window, bg=COLOR_FRAME_BG, padx=20, pady=15)
+        frame.pack(pady=(0, 15), padx=20, fill=tk.X)
 
-        label = tk.Label(frame, text="OUT:")
-        label.grid(row=0, column=0, sticky=tk.W)
+        label = tk.Label(frame, text="保存先フォルダ", font=FONT_LABEL,
+                        bg=COLOR_FRAME_BG, fg=COLOR_TEXT)
+        label.pack(anchor=tk.W, pady=(0, 5))
 
-        self.output_dir_entry = tk.Entry(frame, width=50)
-        self.output_dir_entry.grid(row=0, column=1)
+        entry_frame = tk.Frame(frame, bg=COLOR_FRAME_BG)
+        entry_frame.pack(fill=tk.X)
+
+        self.output_dir_entry = tk.Entry(entry_frame, font=FONT_MAIN,
+                                         relief=tk.FLAT, bd=1,
+                                         highlightthickness=1,
+                                         highlightbackground=COLOR_BORDER,
+                                         highlightcolor=COLOR_PRIMARY)
+        self.output_dir_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=6)
 
         # デフォルト値の設定
         self._load_output_directory()
 
         # 参照ボタン
-        browse_button = tk.Button(frame, text="参照",
-                                 command=self.on_browse_button_clicked)
-        browse_button.grid(row=0, column=2, padx=(5, 0))
+        browse_button = tk.Button(entry_frame, text="参照",
+                                 command=self.on_browse_button_clicked,
+                                 font=FONT_BUTTON, bg=COLOR_FRAME_BG,
+                                 fg=COLOR_TEXT_SECONDARY, relief=tk.FLAT,
+                                 padx=15, cursor="hand2", bd=1,
+                                 highlightthickness=1,
+                                 highlightbackground=COLOR_BORDER)
+        browse_button.pack(side=tk.LEFT, padx=(10, 0), ipady=5)
 
     def _load_output_directory(self) -> None:
         '''出力先ディレクトリを読み込み'''
@@ -168,8 +231,12 @@ class DownloaderApp:
 
     def _create_option_frame(self) -> None:
         '''オプションフレームを作成'''
-        option_frame = tk.Frame(self.window)
-        option_frame.pack(pady=10)
+        option_frame = tk.Frame(self.window, bg=COLOR_FRAME_BG, padx=20, pady=15)
+        option_frame.pack(pady=(0, 15), padx=20, fill=tk.X)
+
+        label = tk.Label(option_frame, text="ダウンロードオプション", font=FONT_LABEL,
+                        bg=COLOR_FRAME_BG, fg=COLOR_TEXT)
+        label.pack(anchor=tk.W, pady=(0, 10))
 
         # ラジオボタン
         self.radio_option = tk.StringVar(value=VIDEO_MODE)
@@ -178,16 +245,35 @@ class DownloaderApp:
             "音声のみをダウンロードする",
         ]
 
+        radio_frame = tk.Frame(option_frame, bg=COLOR_FRAME_BG)
+        radio_frame.pack(fill=tk.X)
+
         for option, option_text in enumerate(radio_options):
             radio_button = tk.Radiobutton(
-                option_frame, text=option_text, variable=self.radio_option,
-                value=str(option), command=self.update_pulldown_options, anchor=tk.W)
-            radio_button.grid(row=option, column=0, sticky=tk.W)
+                radio_frame, text=option_text, variable=self.radio_option,
+                value=str(option), command=self.update_pulldown_options,
+                font=FONT_MAIN, bg=COLOR_FRAME_BG, fg=COLOR_TEXT,
+                activebackground=COLOR_FRAME_BG, cursor="hand2",
+                selectcolor=COLOR_FRAME_BG, anchor=tk.W)
+            radio_button.pack(anchor=tk.W, pady=3)
 
-        # プルダウンメニュー
+        # プルダウンメニュー（音声フォーマット選択用）
+        pulldown_frame = tk.Frame(option_frame, bg=COLOR_FRAME_BG)
+        pulldown_frame.pack(anchor=tk.W, pady=(5, 0), padx=(20, 0))
+
+        pulldown_label = tk.Label(pulldown_frame, text="音声フォーマット:",
+                                 font=FONT_LABEL, bg=COLOR_FRAME_BG,
+                                 fg=COLOR_TEXT_SECONDARY)
+        pulldown_label.pack(side=tk.LEFT, padx=(0, 10))
+
         self.pulldown_option = tk.StringVar(value=OPTION_NONE)
-        self.pulldown_menu = tk.OptionMenu(option_frame, self.pulldown_option, "")
-        self.pulldown_menu.grid(row=1, column=1, padx=20)
+        self.pulldown_menu = tk.OptionMenu(pulldown_frame, self.pulldown_option, "")
+        self.pulldown_menu.config(font=FONT_MAIN, bg=COLOR_FRAME_BG,
+                                 fg=COLOR_TEXT, relief=tk.FLAT, bd=1,
+                                 highlightthickness=1,
+                                 highlightbackground=COLOR_BORDER,
+                                 cursor="hand2", padx=10)
+        self.pulldown_menu.pack(side=tk.LEFT)
 
         # プルダウン初期化
         self.update_pulldown_options()
@@ -241,7 +327,7 @@ class DownloaderApp:
             return
 
         # ボタンを無効化
-        self.start_dl_button.config(state=tk.DISABLED)
+        self.start_dl_button.config(state=tk.DISABLED, bg=COLOR_TEXT_SECONDARY)
         self.progress_bar.start()
 
         # 出力先を設定ファイルに保存
@@ -321,7 +407,7 @@ class DownloaderApp:
             messagebox.showerror("エラー", f"ダウンロードに失敗しました！\n\n{str(e)}")
         finally:
             # ボタンを再度有効化
-            self.start_dl_button.config(state=tk.NORMAL)
+            self.start_dl_button.config(state=tk.NORMAL, bg=COLOR_PRIMARY)
             self.progress_bar.stop()
 
     def on_browse_button_clicked(self) -> None:
