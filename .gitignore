@@ -1,0 +1,36 @@
+# Virtual Environment
+youtube-downloader-env
+venv
+venv-new
+
+# IDE
+.vscode
+.idea
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# PyInstaller
+build/
+dist/
+*.spec
+
+# Executables
+ffmpeg.exe
+yt-dlp.exe
+main.exe
+
+# Documentation
+CLAUDE.md
+
+# Temporary files
+memo
+*.log
+*.tmp
+
+# Configuration (if contains sensitive data)
+config.ini
