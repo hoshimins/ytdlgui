@@ -102,8 +102,8 @@ class DownloaderApp:
     def _setup_icon(self) -> None:
         '''アイコン設定'''
         try:
-            if os.path.exists("icon.ico"):
-                self.window.iconbitmap("icon.ico")
+            if os.path.exists("ytdlp-icon.ico"):
+                self.window.iconbitmap("ytdlp-icon.ico")
         except Exception:
             pass
 
