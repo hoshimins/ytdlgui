@@ -12,6 +12,7 @@ import sys
 from typing import Tuple, Optional
 from datetime import datetime
 from queue import Queue
+import ctypes
 
 # 定数定義
 CONFIG_FILE = "config.ini"
@@ -73,6 +74,15 @@ class DownloaderApp:
     '''Movie Downloader アプリケーションクラス'''
 
     def __init__(self):
+        # Windowsタスクバーアイコン用のAppUserModelIDを設定
+        if sys.platform == 'win32':
+            try:
+                # タスクバーのアイコンをPythonデフォルトから独自アイコンに変更
+                myappid = 'hoshimi.ytdlgui.moviedownloader.1.0'
+                ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+            except Exception:
+                pass
+
         self.window = tk.Tk()
         self.window.title(WINDOW_TITLE)
         self.window.geometry(WINDOW_GEOMETRY)
