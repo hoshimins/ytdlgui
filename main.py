@@ -74,16 +74,11 @@ class DownloaderApp:
     '''Movie Downloader アプリケーションクラス'''
 
     def __init__(self):
-        # Windowsタスクバーアイコン用のAppUserModelIDを設定
-        if sys.platform == 'win32':
-            try:
-                # タスクバーのアイコンをPythonデフォルトから独自アイコンに変更
-                myappid = 'hoshimi.ytdlgui.moviedownloader.1.0'
-                ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-            except Exception:
-                pass
-
         self.window = tk.Tk()
+
+        # アイコン設定（ウィンドウ作成直後に実行）
+        self._setup_icon()
+
         self.window.title(WINDOW_TITLE)
         self.window.geometry(WINDOW_GEOMETRY)
         self.window.configure(bg=COLOR_BG)
@@ -103,7 +98,6 @@ class DownloaderApp:
         self.output_queue: Queue = Queue()
 
         # 初期化
-        self._setup_icon()
         self._setup_style()
         self._setup_keyboard_shortcuts()
         self._update_ytdlp()
@@ -111,11 +105,27 @@ class DownloaderApp:
 
     def _setup_icon(self) -> None:
         '''アイコン設定'''
+        # PyInstallerでビルドした際のリソースパスを取得
+        if getattr(sys, 'frozen', False):
+            # PyInstallerでビルドされた場合
+            base_path = sys._MEIPASS
+        else:
+            # 通常のPython実行の場合
+            base_path = os.path.dirname(os.path.abspath(__file__))
+
+        icon_path = os.path.join(base_path, "ytdlp-icon.ico")
+
         try:
-            if os.path.exists("ytdlp-icon.ico"):
-                self.window.iconbitmap("ytdlp-icon.ico")
-        except Exception:
-            pass
+            # ウィンドウアイコンを設定（デフォルトとタスクバー両方）
+            self.window.iconbitmap(default=icon_path)
+        except Exception as e:
+            print(f"Icon setting failed: {e}")
+            # フォールバック: カレントディレクトリから試行
+            try:
+                if os.path.exists("ytdlp-icon.ico"):
+                    self.window.iconbitmap(default="ytdlp-icon.ico")
+            except Exception:
+                pass
 
     def _setup_style(self) -> None:
         '''スタイル設定'''
