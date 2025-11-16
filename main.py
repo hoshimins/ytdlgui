@@ -2,13 +2,16 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter import filedialog
 from tkinter import ttk
+from tkinter import scrolledtext
 import subprocess
 import threading
 import os
 import configparser
 import logging
+import sys
 from typing import Tuple, Optional
 from datetime import datetime
+from queue import Queue
 
 # 定数定義
 CONFIG_FILE = "config.ini"
@@ -16,7 +19,7 @@ LOG_FILE = "ytdlgui.log"
 
 # UI定数
 WINDOW_TITLE = "Movie Downloader"
-WINDOW_GEOMETRY = "600x420"
+WINDOW_GEOMETRY = "600x650"
 
 # カラースキーム
 COLOR_BG = "#f5f5f5"
@@ -32,6 +35,7 @@ COLOR_BORDER = "#e0e0e0"
 FONT_MAIN = ("Segoe UI", 10)
 FONT_LABEL = ("Segoe UI", 9)
 FONT_BUTTON = ("Segoe UI", 10, "bold")
+FONT_CONSOLE = ("Consolas", 9)
 
 # オプション定数
 OPTION_NONE = "オプションなし"
@@ -83,6 +87,10 @@ class DownloaderApp:
         self.pulldown_menu: Optional[tk.OptionMenu] = None
         self.start_dl_button: Optional[tk.Button] = None
         self.progress_bar: Optional[ttk.Progressbar] = None
+        self.console_output: Optional[scrolledtext.ScrolledText] = None
+
+        # 出力キュー（スレッド間通信用）
+        self.output_queue: Queue = Queue()
 
         # 初期化
         self._setup_icon()
@@ -120,10 +128,21 @@ class DownloaderApp:
     def _update_ytdlp(self) -> None:
         '''yt-dlpの更新（起動時）'''
         try:
-            subprocess.run("yt-dlp --rm-cache-dir", shell=True,
-                          capture_output=True, text=True, timeout=30)
-            result = subprocess.run("yt-dlp -U --no-check-certificate", shell=True,
-                                  capture_output=True, text=True, timeout=60)
+            # Windows用のコンソールウィンドウ非表示設定
+            startupinfo = None
+            creationflags = 0
+            if sys.platform == 'win32':
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                startupinfo.wShowWindow = subprocess.SW_HIDE
+                creationflags = subprocess.CREATE_NO_WINDOW
+
+            subprocess.run(["yt-dlp", "--rm-cache-dir"],
+                          capture_output=True, text=True, timeout=30,
+                          startupinfo=startupinfo, creationflags=creationflags)
+            result = subprocess.run(["yt-dlp", "-U", "--no-check-certificate"],
+                                  capture_output=True, text=True, timeout=60,
+                                  startupinfo=startupinfo, creationflags=creationflags)
             if result.returncode != 0 and result.stderr:
                 print(f"yt-dlp update info: {result.stderr}")
         except subprocess.TimeoutExpired:
@@ -166,8 +185,14 @@ class DownloaderApp:
         self.start_dl_button.bind("<Leave>", lambda e: self.start_dl_button.config(
             bg=COLOR_PRIMARY if self.start_dl_button['state'] == tk.NORMAL else COLOR_TEXT_SECONDARY))
 
+        # コンソール出力エリア
+        self._create_console_frame()
+
         # メニューバー
         self._create_menu()
+
+        # 出力キューの監視を開始
+        self._check_output_queue()
 
     def _create_url_frame(self) -> None:
         '''URL入力欄を作成'''
@@ -278,6 +303,58 @@ class DownloaderApp:
         # プルダウン初期化
         self.update_pulldown_options()
 
+    def _create_console_frame(self) -> None:
+        '''コンソール出力エリアを作成'''
+        frame = tk.Frame(self.window, bg=COLOR_FRAME_BG, padx=20, pady=15)
+        frame.pack(pady=(0, 20), padx=20, fill=tk.BOTH, expand=True)
+
+        # ヘッダー（ラベルとクリアボタン）
+        header_frame = tk.Frame(frame, bg=COLOR_FRAME_BG)
+        header_frame.pack(fill=tk.X, pady=(0, 5))
+
+        label = tk.Label(header_frame, text="ダウンロード状況", font=FONT_LABEL,
+                        bg=COLOR_FRAME_BG, fg=COLOR_TEXT)
+        label.pack(side=tk.LEFT)
+
+        clear_button = tk.Button(header_frame, text="クリア",
+                                command=self._clear_console,
+                                font=FONT_LABEL, bg=COLOR_FRAME_BG,
+                                fg=COLOR_TEXT_SECONDARY, relief=tk.FLAT,
+                                cursor="hand2", padx=10, pady=2)
+        clear_button.pack(side=tk.RIGHT)
+
+        # スクロール付きテキストエリア
+        self.console_output = scrolledtext.ScrolledText(
+            frame, font=FONT_CONSOLE, bg="#1e1e1e", fg="#d4d4d4",
+            relief=tk.FLAT, bd=1, highlightthickness=1,
+            highlightbackground=COLOR_BORDER, wrap=tk.WORD,
+            height=10, state=tk.DISABLED)
+        self.console_output.pack(fill=tk.BOTH, expand=True)
+
+    def _clear_console(self) -> None:
+        '''コンソール出力をクリア'''
+        self.console_output.config(state=tk.NORMAL)
+        self.console_output.delete(1.0, tk.END)
+        self.console_output.config(state=tk.DISABLED)
+
+    def _append_to_console(self, text: str) -> None:
+        '''コンソール出力に追記'''
+        self.console_output.config(state=tk.NORMAL)
+        self.console_output.insert(tk.END, text)
+        self.console_output.see(tk.END)  # 自動スクロール
+        self.console_output.config(state=tk.DISABLED)
+
+    def _check_output_queue(self) -> None:
+        '''出力キューを定期的にチェックしてUIに反映'''
+        try:
+            while True:
+                message = self.output_queue.get_nowait()
+                self._append_to_console(message)
+        except:
+            pass
+        # 100msごとにチェック
+        self.window.after(100, self._check_output_queue)
+
     def _create_menu(self) -> None:
         '''メニューバーを作成'''
         menubar = tk.Menu(self.window)
@@ -346,6 +423,9 @@ class DownloaderApp:
 
     def _download_video(self, video_url: str, output_dir: str) -> None:
         '''ダウンロード処理（別スレッド用）'''
+        # コンソールに開始メッセージを出力
+        self.output_queue.put(f"ダウンロード開始: {video_url}\n")
+
         # 出力パスの生成
         output_file_name = r"\%(upload_date)s-%(title)s.%(ext)s"
         output_path = os.path.join(output_dir, output_file_name.lstrip("\\"))
@@ -361,7 +441,8 @@ class DownloaderApp:
             "--output",
             output_path,
             "--retries",
-            RETRY_COUNT
+            RETRY_COUNT,
+            "--newline"  # 進捗を改行で出力
         ]
 
         # プルダウンリストの値によってオプションを変更
@@ -387,23 +468,49 @@ class DownloaderApp:
 
         # エラーハンドリング
         try:
-            result = subprocess.run(command, timeout=DEFAULT_TIMEOUT,
-                                  capture_output=True, text=True)
+            # Windows用のコンソールウィンドウ非表示設定
+            startupinfo = None
+            if sys.platform == 'win32':
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                startupinfo.wShowWindow = subprocess.SW_HIDE
 
-            if result.returncode == 0:
+            # プロセス起動（リアルタイム出力）
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+                startupinfo=startupinfo,
+                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+            )
+
+            # リアルタイムで出力を読み込み
+            for line in process.stdout:
+                self.output_queue.put(line)
+
+            # プロセス終了を待機
+            return_code = process.wait(timeout=DEFAULT_TIMEOUT)
+
+            if return_code == 0:
                 # 成功時にURLをクリア
                 self.url_entry.delete(0, tk.END)
                 log_info(f"ダウンロード成功: {video_url}")
+                self.output_queue.put("\n✓ ダウンロード完了しました！\n\n")
                 messagebox.showinfo("ダウンロード完了", "ダウンロードが完了しました！")
             else:
-                error_msg = result.stderr if result.stderr else "不明なエラー"
+                error_msg = f"エラーコード: {return_code}"
                 log_error(f"ダウンロード失敗: {video_url} - {error_msg}")
+                self.output_queue.put(f"\n✗ ダウンロードに失敗しました\n\n")
                 messagebox.showerror("エラー", f"ダウンロードに失敗しました！\n\n{error_msg}")
         except subprocess.TimeoutExpired:
             log_error(f"ダウンロードタイムアウト: {video_url}")
+            self.output_queue.put("\n✗ タイムアウト（10分以上経過）\n\n")
             messagebox.showerror("エラー", "ダウンロードがタイムアウトしました（10分以上経過）")
         except Exception as e:
             log_error(f"ダウンロードエラー: {video_url} - {str(e)}")
+            self.output_queue.put(f"\n✗ エラー: {str(e)}\n\n")
             messagebox.showerror("エラー", f"ダウンロードに失敗しました！\n\n{str(e)}")
         finally:
             # ボタンを再度有効化
@@ -438,8 +545,18 @@ class DownloaderApp:
     def get_ytdlp_version(self) -> str:
         '''yt-dlpのバージョンを取得'''
         try:
-            result = subprocess.run("yt-dlp --version", shell=True,
-                                  capture_output=True, text=True, timeout=10)
+            # Windows用のコンソールウィンドウ非表示設定
+            startupinfo = None
+            creationflags = 0
+            if sys.platform == 'win32':
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                startupinfo.wShowWindow = subprocess.SW_HIDE
+                creationflags = subprocess.CREATE_NO_WINDOW
+
+            result = subprocess.run(["yt-dlp", "--version"],
+                                  capture_output=True, text=True, timeout=10,
+                                  startupinfo=startupinfo, creationflags=creationflags)
             if result.returncode == 0:
                 return result.stdout.strip()
             return "不明"
