@@ -30,9 +30,6 @@ ffmpeg.exe
 yt-dlp.exe
 main.exe
 
-# Documentation
-CLAUDE.md
-
 # Temporary files
 memo
 *.log
