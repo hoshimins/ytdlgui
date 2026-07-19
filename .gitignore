@@ -6,6 +6,7 @@ venv-new
 # IDE
 .vscode
 .idea
+.vs/
 
 # Python
 __pycache__/
@@ -13,6 +14,11 @@ __pycache__/
 *.pyo
 *.pyd
 .Python
+
+# .NET
+**/bin/
+**/obj/
+artifacts/
 
 # PyInstaller
 build/
@@ -23,9 +29,6 @@ dist/
 ffmpeg.exe
 yt-dlp.exe
 main.exe
-
-# Documentation
-CLAUDE.md
 
 # Temporary files
 memo
