@@ -1,10 +1,15 @@
-param(
+﻿param(
     [string]$Destination = "artifacts\publish\win-x64"
 )
 
 $ErrorActionPreference = "Stop"
 $projectRoot = (Resolve-Path -LiteralPath $PSScriptRoot).Path
-$destinationPath = [IO.Path]::GetFullPath($Destination, $projectRoot)
+$destinationCandidate = if ([IO.Path]::IsPathRooted($Destination)) {
+    $Destination
+} else {
+    Join-Path $projectRoot $Destination
+}
+$destinationPath = [IO.Path]::GetFullPath($destinationCandidate)
 if (-not $destinationPath.StartsWith($projectRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
     throw "配置先はプロジェクト内を指定してください: $destinationPath"
 }

@@ -7,6 +7,14 @@ namespace YtdlGUI.Wpf.Tests;
 public sealed class YtDlpCommandBuilderTests
 {
     [TestMethod]
+    public void Update_DoesNotDisableCertificateValidation()
+    {
+        var arguments = YtDlpCommandBuilder.BuildUpdateArguments();
+
+        CollectionAssert.AreEqual(new[] { "-U" }, arguments.ToArray());
+    }
+
+    [TestMethod]
     public void VideoPreset_PreservesH264Mp4AndDatePrefixedOutput()
     {
         var request = new DownloadRequest(
