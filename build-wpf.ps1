@@ -13,6 +13,8 @@ $publishPath = [IO.Path]::GetFullPath($publishCandidate)
 if (-not $publishPath.StartsWith($projectRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
     throw "出力先はプロジェクト内を指定してください: $publishPath"
 }
+$solutionPath = Join-Path $projectRoot "YtdlGUI.slnx"
+$projectPath = Join-Path $projectRoot "src\YtdlGUI.Wpf\YtdlGUI.Wpf.csproj"
 
 $userDotnet = Join-Path $env:USERPROFILE ".dotnet\dotnet.exe"
 if (Test-Path -LiteralPath $userDotnet) {
@@ -25,7 +27,7 @@ if (Test-Path -LiteralPath $userDotnet) {
     $dotnetPath = $dotnetCommand.Source
 }
 
-& $dotnetPath test "YtdlGUI.slnx" -c Release
+& $dotnetPath test $solutionPath -c Release
 if ($LASTEXITCODE -ne 0) { throw "テストに失敗しました。" }
 
 # 以前の発行物に外部 GPL バイナリが残留しないよう、発行先を毎回空にする。
@@ -33,7 +35,7 @@ if (Test-Path -LiteralPath $publishPath) {
     Get-ChildItem -LiteralPath $publishPath -Force | Remove-Item -Recurse -Force
 }
 
-& $dotnetPath publish "src\YtdlGUI.Wpf\YtdlGUI.Wpf.csproj" `
+& $dotnetPath publish $projectPath `
     -c Release `
     -r win-x64 `
     --self-contained true `
