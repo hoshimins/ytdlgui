@@ -22,9 +22,7 @@ public static class YtDlpCommandBuilder
     {
         var isWavOutput = request.ConvertAudioToWav &&
             request.Preset is DownloadPreset.AudioM4a or DownloadPreset.AudioMp3;
-        var outputTemplate = Path.Combine(
-            request.OutputDirectory,
-            "%(upload_date)s-%(title)s.%(ext)s");
+        const string outputTemplate = "%(upload_date)s-%(title)s.%(ext)s";
 
         var arguments = new List<string>
         {
@@ -34,6 +32,7 @@ public static class YtDlpCommandBuilder
             "--retries", "3",
             "--newline",
             "--no-playlist",
+            "--paths", request.OutputDirectory,
             "--output", outputTemplate,
             "--progress-template",
             $"download:{ProgressPrefix}|%(progress._percent_str)s|%(progress._speed_str)s|%(progress._eta_str)s|%(progress.downloaded_bytes)s|%(progress.total_bytes_estimate)s"
