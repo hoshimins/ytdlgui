@@ -217,6 +217,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         private set => SetProperty(ref _versionText, value);
     }
 
+    public string AppVersionText { get; } = FormatAppVersion(
+        typeof(MainViewModel).Assembly.GetName().Version);
+
     public ObservableCollection<string> LogLines { get; } = [];
     public ICommand DownloadCommand { get; }
     public ICommand CancelCommand { get; }
@@ -397,9 +400,25 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         if (Directory.Exists(OutputDirectory))
         {
-            Process.Start(new ProcessStartInfo("explorer.exe", OutputDirectory) { UseShellExecute = true });
+            Process.Start(CreateOpenFolderStartInfo(OutputDirectory));
         }
     }
+
+    internal static ProcessStartInfo CreateOpenFolderStartInfo(string outputDirectory)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "explorer.exe",
+            UseShellExecute = true
+        };
+        startInfo.ArgumentList.Add(outputDirectory);
+        return startInfo;
+    }
+
+    internal static string FormatAppVersion(Version? version) =>
+        version is null
+            ? "Movie Downloader"
+            : $"Movie Downloader {version.Major}.{version.Minor}.{Math.Max(version.Build, 0)}";
 
     private async Task UpdateYtDlpAsync()
     {

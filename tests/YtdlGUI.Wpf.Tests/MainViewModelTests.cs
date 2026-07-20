@@ -8,6 +8,26 @@ namespace YtdlGUI.Wpf.Tests;
 public sealed class MainViewModelTests
 {
     [TestMethod]
+    public void OpenFolder_PassesSpacedPathAsSingleArgument()
+    {
+        const string outputDirectory = @"C:\Users\Jane Doe\Downloads";
+
+        var startInfo = MainViewModel.CreateOpenFolderStartInfo(outputDirectory);
+
+        Assert.AreEqual("explorer.exe", startInfo.FileName);
+        Assert.IsTrue(startInfo.UseShellExecute);
+        CollectionAssert.AreEqual(new[] { outputDirectory }, startInfo.ArgumentList.ToArray());
+    }
+
+    [TestMethod]
+    public void AppVersion_UsesThreePartReleaseVersion()
+    {
+        var label = MainViewModel.FormatAppVersion(new Version(1, 0, 0, 0));
+
+        Assert.AreEqual("Movie Downloader 1.0.0", label);
+    }
+
+    [TestMethod]
     public async Task Url_WithSurroundingWhitespace_InspectsNormalizedValue()
     {
         var ytDlpService = new RecordingYtDlpService();

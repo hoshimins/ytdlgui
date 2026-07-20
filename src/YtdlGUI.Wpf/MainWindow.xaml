@@ -254,7 +254,7 @@
                 Background="{DynamicResource FooterBrush}"
                 Padding="36,12">
             <Grid>
-                <TextBlock Text="Movie Downloader 2.0" Style="{StaticResource SecondaryText}" />
+                <TextBlock Text="{Binding AppVersionText}" Style="{StaticResource SecondaryText}" />
                 <TextBlock Text="Windows 11 Fluent · .NET 10"
                            Style="{StaticResource SecondaryText}"
                            HorizontalAlignment="Right" />
