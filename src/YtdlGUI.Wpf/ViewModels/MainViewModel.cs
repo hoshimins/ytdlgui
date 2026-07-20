@@ -262,7 +262,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _inspectCancellation?.Dispose();
         _inspectCancellation = null;
 
-        if (!IsValidHttpUrl(value))
+        var normalizedValue = value.Trim();
+
+        if (!IsValidHttpUrl(normalizedValue))
         {
             if (!string.IsNullOrWhiteSpace(value))
             {
@@ -273,7 +275,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         var source = new CancellationTokenSource();
         _inspectCancellation = source;
-        _ = InspectAfterDelayAsync(value, source.Token);
+        _ = InspectAfterDelayAsync(normalizedValue, source.Token);
     }
 
     private async Task InspectAfterDelayAsync(string url, CancellationToken cancellationToken)
