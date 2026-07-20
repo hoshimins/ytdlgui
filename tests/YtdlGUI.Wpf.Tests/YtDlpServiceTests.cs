@@ -1,3 +1,4 @@
+using System.Net.Http;
 using YtdlGUI.Wpf.Models;
 using YtdlGUI.Wpf.Services;
 
@@ -6,6 +7,29 @@ namespace YtdlGUI.Wpf.Tests;
 [TestClass]
 public sealed class YtDlpServiceTests
 {
+    [TestMethod]
+    public async Task LatestVersion_ApiTimeoutReturnsUnknownVersion()
+    {
+        using var httpClient = new HttpClient(new TimeoutHandler());
+
+        var latestVersion = await YtDlpService.GetLatestVersionAsync(
+            httpClient,
+            CancellationToken.None);
+
+        Assert.IsNull(latestVersion);
+    }
+
+    [TestMethod]
+    public async Task LatestVersion_CallerCancellationIsNotIgnored()
+    {
+        using var httpClient = new HttpClient(new CallerCancellationHandler());
+        using var cancellationSource = new CancellationTokenSource();
+        cancellationSource.Cancel();
+
+        await Assert.ThrowsExactlyAsync<TaskCanceledException>(() =>
+            YtDlpService.GetLatestVersionAsync(httpClient, cancellationSource.Token));
+    }
+
     [TestMethod]
     public async Task Download_RequiresFfprobeAlongsideFfmpeg()
     {
@@ -37,5 +61,22 @@ public sealed class YtDlpServiceTests
         {
             Directory.Delete(directory, recursive: true);
         }
+    }
+
+    private sealed class TimeoutHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken) =>
+            Task.FromException<HttpResponseMessage>(
+                new TaskCanceledException("GitHub API timeout", new TimeoutException()));
+    }
+
+    private sealed class CallerCancellationHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken) =>
+            Task.FromCanceled<HttpResponseMessage>(cancellationToken);
     }
 }
