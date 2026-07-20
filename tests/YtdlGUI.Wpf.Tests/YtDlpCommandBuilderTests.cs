@@ -34,7 +34,7 @@ public sealed class YtDlpCommandBuilderTests
     }
 
     [TestMethod]
-    public void OutputDirectory_WithPercentIsPassedAsLiteralPath()
+    public void OutputDirectory_WithPercentEscapesLiteralPercent()
     {
         const string outputDirectory = @"C:\work\100%";
         var request = new DownloadRequest(
@@ -47,13 +47,13 @@ public sealed class YtDlpCommandBuilderTests
 
         var arguments = YtDlpCommandBuilder.BuildDownloadArguments(request, @"C:\Tools\ffmpeg.exe");
         var argumentList = arguments.ToList();
-        var pathsIndex = argumentList.IndexOf("--paths");
         var outputIndex = argumentList.IndexOf("--output");
 
-        Assert.IsGreaterThanOrEqualTo(0, pathsIndex);
         Assert.IsGreaterThanOrEqualTo(0, outputIndex);
-        Assert.AreEqual(outputDirectory, argumentList[pathsIndex + 1]);
-        Assert.AreEqual("%(upload_date)s-%(title)s.%(ext)s", argumentList[outputIndex + 1]);
+        Assert.AreEqual(
+            @"C:\work\100%%\%(upload_date)s-%(title)s.%(ext)s",
+            argumentList[outputIndex + 1]);
+        CollectionAssert.DoesNotContain(argumentList, "--paths");
     }
 
     [TestMethod]
