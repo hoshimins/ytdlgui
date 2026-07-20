@@ -25,6 +25,7 @@ The implementation preserves the target's Fluent-style visual hierarchy: a quiet
 - Layout: consistent outer margin, aligned controls, 8px-class rounded surfaces, no overlap at the tested viewport.
 - Color and contrast: neutral light surfaces, blue selected/primary state, visible disabled state, red inline error state. The dark theme uses a dedicated dark foreground brush on its bright accent button instead of fixed white text.
 - Dark theme verification: launched the published app with `--qa-dark` and confirmed the enabled primary button on the actual WPF screen. The calculated text contrast is 7.26:1 normally and 7.91:1 on hover.
+- Release metadata verification: launched the published app with `--qa-light` and confirmed that the footer displays `Movie Downloader 1.0.0`; the executable file version is `1.0.0.0`.
 - Assets: real yt-dlp thumbnail used; no placeholder illustration or CSS/SVG substitute.
 - Interaction: URL inspection is asynchronous; presets, browse, download, cancel, expanders, and clear action are native controls.
 - Accessibility: tab-focusable native controls, system theme support, visible focus cues, resizable window, minimum size guard.
