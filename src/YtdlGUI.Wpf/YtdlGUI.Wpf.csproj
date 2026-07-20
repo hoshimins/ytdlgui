@@ -16,6 +16,7 @@
     <Resource Include="..\..\ytdlp-icon.ico" Link="ytdlp-icon.ico" />
     <Resource Include="..\..\ytdlp-icon.png" Link="Assets\ytdlp-icon.png" Condition="Exists('..\..\ytdlp-icon.png')" />
     <Content Include="..\..\THIRD_PARTY_NOTICES.md" Link="THIRD_PARTY_NOTICES.md" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\LICENSE" Link="LICENSE" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="..\..\licenses\DOTNET_RUNTIME_LICENSE.txt" Link="licenses\DOTNET_RUNTIME_LICENSE.txt" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

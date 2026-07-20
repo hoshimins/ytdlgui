@@ -22,8 +22,9 @@ public static class YtDlpCommandBuilder
     {
         var isWavOutput = request.ConvertAudioToWav &&
             request.Preset is DownloadPreset.AudioM4a or DownloadPreset.AudioMp3;
+        var escapedOutputDirectory = request.OutputDirectory.Replace("%", "%%", StringComparison.Ordinal);
         var outputTemplate = Path.Combine(
-            request.OutputDirectory,
+            escapedOutputDirectory,
             "%(upload_date)s-%(title)s.%(ext)s");
 
         var arguments = new List<string>

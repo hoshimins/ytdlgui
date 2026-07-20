@@ -119,7 +119,7 @@ UIを変更した場合は、ライトテーマとダークテーマ、最小ウ
 - 公式のyt-dlp WindowsバイナリにはGPLv3+の第三者コードが含まれます。
 - 現在取得するGyanのFFmpeg Essentials BuildはGPLv3です。
 - 外部実行ファイルを含むフォルダを再配布する場合は、GPLのライセンス表示や対応するソースコードの提供義務を別途満たす必要があります。通常の発行処理では再配布しないでください。
-- 自己完結型の発行物には.NETランタイムが含まれます。`THIRD_PARTY_NOTICES.md`と`licenses/DOTNET_RUNTIME_LICENSE.txt`を発行物から削除しないでください。
+- 自己完結型の発行物には.NETランタイムが含まれます。アプリ本体の`LICENSE`、`THIRD_PARTY_NOTICES.md`、`licenses/DOTNET_RUNTIME_LICENSE.txt`を発行物から削除しないでください。
 
 外部ツールの取得元、種類、同梱方針を変更するときは、実装前に各配布元の最新ライセンスを一次資料で確認し、`THIRD_PARTY_NOTICES.md`とREADMEを更新してください。
 
