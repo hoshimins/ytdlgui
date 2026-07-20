@@ -27,22 +27,28 @@ if (Test-Path -LiteralPath $userDotnet) {
     $dotnetPath = $dotnetCommand.Source
 }
 
-& $dotnetPath test $solutionPath -c Release
-if ($LASTEXITCODE -ne 0) { throw "テストに失敗しました。" }
+Push-Location -LiteralPath $projectRoot
+try {
+    & $dotnetPath test $solutionPath -c Release
+    if ($LASTEXITCODE -ne 0) { throw "テストに失敗しました。" }
 
-# 以前の発行物に外部 GPL バイナリが残留しないよう、発行先を毎回空にする。
-if (Test-Path -LiteralPath $publishPath) {
-    Get-ChildItem -LiteralPath $publishPath -Force | Remove-Item -Recurse -Force
+    # 以前の発行物に外部 GPL バイナリが残留しないよう、発行先を毎回空にする。
+    if (Test-Path -LiteralPath $publishPath) {
+        Get-ChildItem -LiteralPath $publishPath -Force | Remove-Item -Recurse -Force
+    }
+
+    & $dotnetPath publish $projectPath `
+        -c Release `
+        -r win-x64 `
+        --self-contained true `
+        -p:PublishSingleFile=true `
+        -p:IncludeNativeLibrariesForSelfExtract=true `
+        -o $publishPath
+    if ($LASTEXITCODE -ne 0) { throw "発行に失敗しました。" }
+
+    Write-Host "アプリ本体を作成しました: $publishPath"
+    Write-Host "ローカル実行用の外部ツールは .\setup-tools.ps1 で取得できます。"
 }
-
-& $dotnetPath publish $projectPath `
-    -c Release `
-    -r win-x64 `
-    --self-contained true `
-    -p:PublishSingleFile=true `
-    -p:IncludeNativeLibrariesForSelfExtract=true `
-    -o $publishPath
-if ($LASTEXITCODE -ne 0) { throw "発行に失敗しました。" }
-
-Write-Host "アプリ本体を作成しました: $publishPath"
-Write-Host "ローカル実行用の外部ツールは .\setup-tools.ps1 で取得できます。"
+finally {
+    Pop-Location
+}
