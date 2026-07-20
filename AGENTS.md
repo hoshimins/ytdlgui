@@ -83,7 +83,7 @@
 - 動画プリセットはH.264を優先し、MP4へマージします。
 - 音声プリセットはM4AとMP3を提供し、詳細設定からWAVへ変換できます。
 - 出力ファイル名は`%(upload_date)s-%(title)s.%(ext)s`を維持します。
-- サムネイル埋め込みは初期状態で有効です。
+- サムネイル埋め込みは初期状態で有効です。ただし、yt-dlpがWAVへの埋め込みをサポートしないため、WAV変換時は埋め込み引数を付けないでください。
 - 動画では日本語・英語字幕の取得と埋め込みを選択できます。
 - ダウンロード中は進捗率、速度、残り時間、状態、キャンセルを表示します。
 - ダウンロード処理には10分のタイムアウトがあり、キャンセル時は子プロセスも終了します。
@@ -114,7 +114,7 @@ UIを変更した場合は、ライトテーマとダークテーマ、最小ウ
 ## 外部ツールとライセンス
 
 - アプリ本体のライセンスはルートの`LICENSE`にあるMIT Licenseです。
-- `yt-dlp.exe`と`ffmpeg.exe`はリポジトリ、コミット、標準配布物へ含めないでください。
+- `yt-dlp.exe`、`ffmpeg.exe`、`ffprobe.exe`はリポジトリ、コミット、標準配布物へ含めないでください。
 - `setup-tools.ps1`は、yt-dlpの公式GitHub ReleasesとGyanのFFmpeg配布元から、ローカル実行用のファイルを直接取得します。
 - 公式のyt-dlp WindowsバイナリにはGPLv3+の第三者コードが含まれます。
 - 現在取得するGyanのFFmpeg Essentials BuildはGPLv3です。
@@ -136,7 +136,7 @@ UIを変更した場合は、ライトテーマとダークテーマ、最小ウ
 
 1. 関連する単体テストを実行する。
 2. 原則として`.\build-wpf.ps1`を実行する。
-3. `artifacts\publish\win-x64`に`yt-dlp.exe`と`ffmpeg.exe`が混入していないことを確認する。
+3. `artifacts\publish\win-x64`に`yt-dlp.exe`、`ffmpeg.exe`、`ffprobe.exe`が混入していないことを確認する。
 4. `git diff --check`で空白エラーを確認する。
 5. `git status`と差分を確認し、依頼と無関係なファイルを含めない。
 6. UI変更時は、実際の画面と操作を確認する。
@@ -159,7 +159,7 @@ UIを変更した場合は、ライトテーマとダークテーマ、最小ウ
 ## コミットしないもの
 
 - `artifacts/`、`bin/`、`obj/`などの生成物
-- `yt-dlp.exe`、`ffmpeg.exe`、`main.exe`などの外部または旧実行ファイル
+- `yt-dlp.exe`、`ffmpeg.exe`、`ffprobe.exe`、`main.exe`などの外部または旧実行ファイル
 - `%AppData%\YtdlGUI\settings.json`や`config.ini`などの利用者設定
 - ログ、一時ファイル、IDE固有設定、認証情報、秘密鍵
 

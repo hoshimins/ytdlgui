@@ -69,4 +69,20 @@ public sealed class YtDlpCommandBuilderTests
 
         Assert.AreEqual("wav", arguments[audioFormatIndex + 1]);
     }
+
+    [TestMethod]
+    public void AudioPreset_WavDoesNotEmbedThumbnail()
+    {
+        var request = new DownloadRequest(
+            "https://example.com/video",
+            DownloadPreset.AudioMp3,
+            @"C:\Downloads",
+            true,
+            false,
+            true);
+
+        var arguments = YtDlpCommandBuilder.BuildDownloadArguments(request, @"C:\Tools\ffmpeg.exe");
+
+        CollectionAssert.DoesNotContain(arguments.ToList(), "--embed-thumbnail");
+    }
 }

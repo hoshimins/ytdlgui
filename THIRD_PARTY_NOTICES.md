@@ -1,6 +1,6 @@
 # Third-party software and distribution notes
 
-This repository builds Movie Downloader but does not include or publish `yt-dlp.exe` or `ffmpeg.exe` as part of the application artifact.
+This repository builds Movie Downloader but does not include or publish `yt-dlp.exe`, `ffmpeg.exe`, or `ffprobe.exe` as part of the application artifact.
 
 ## yt-dlp
 
@@ -14,7 +14,7 @@ This repository builds Movie Downloader but does not include or publish `yt-dlp.
 - Project: https://ffmpeg.org/
 - Windows build source used by the local setup script: Gyan's official GitHub mirror at https://github.com/GyanD/codexffmpeg/releases (documented at https://www.gyan.dev/ffmpeg/builds/)
 - FFmpeg is LGPLv2.1-or-later by default, but optional GPL components change the resulting build's license.
-- Gyan's static Windows builds are documented as GPLv3. The setup script downloads the Essentials Build directly from Gyan.
+- Gyan's static Windows builds are documented as GPLv3. The setup script downloads the Essentials Build directly from Gyan and installs its `ffmpeg.exe` and `ffprobe.exe`.
 
 ## .NET runtime
 

@@ -20,6 +20,8 @@ public static class YtDlpCommandBuilder
         DownloadRequest request,
         string ffmpegPath)
     {
+        var isWavOutput = request.ConvertAudioToWav &&
+            request.Preset is DownloadPreset.AudioM4a or DownloadPreset.AudioMp3;
         var outputTemplate = Path.Combine(
             request.OutputDirectory,
             "%(upload_date)s-%(title)s.%(ext)s");
@@ -37,7 +39,7 @@ public static class YtDlpCommandBuilder
             $"download:{ProgressPrefix}|%(progress._percent_str)s|%(progress._speed_str)s|%(progress._eta_str)s|%(progress.downloaded_bytes)s|%(progress.total_bytes_estimate)s"
         };
 
-        if (request.EmbedThumbnail)
+        if (request.EmbedThumbnail && !isWavOutput)
         {
             arguments.Add("--embed-thumbnail");
         }
