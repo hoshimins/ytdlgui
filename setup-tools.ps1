@@ -20,11 +20,13 @@ New-Item -ItemType Directory -Path $temporaryDirectory | Out-Null
 
 try {
     $ytDlpPath = Join-Path $destinationPath "yt-dlp.exe"
+    $downloadedYtDlp = Join-Path $temporaryDirectory "yt-dlp.exe"
     Write-Host "yt-dlp.exe を公式 GitHub Releases から取得しています..."
     & curl.exe --location --fail --retry 3 --progress-bar `
-        --output $ytDlpPath `
+        --output $downloadedYtDlp `
         "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
     if ($LASTEXITCODE -ne 0) { throw "yt-dlp.exe の取得に失敗しました。" }
+    Copy-Item -LiteralPath $downloadedYtDlp -Destination $ytDlpPath -Force
 
     $ffmpegArchive = Join-Path $temporaryDirectory "ffmpeg-release-essentials.7z"
     $ffmpegExtracted = Join-Path $temporaryDirectory "ffmpeg"

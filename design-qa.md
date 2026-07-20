@@ -6,6 +6,7 @@
 - Implementation: `D:\Document\Program\YtdlGUI\artifacts\qa\wpf-metadata-final.jpg`
 - Viewport: 1426 x 1017 logical pixels, light theme
 - State: valid YouTube URL inspected; real title, channel, duration, date, and thumbnail displayed
+- Theme override: `--qa-light` and `--qa-dark` can be used for repeatable visual verification without changing the Windows system theme.
 
 ## Result
 
@@ -22,7 +23,8 @@ The implementation preserves the target's Fluent-style visual hierarchy: a quiet
 
 - Typography: Segoe UI/Windows Fluent defaults, clear label/title/body hierarchy, no clipped real metadata.
 - Layout: consistent outer margin, aligned controls, 8px-class rounded surfaces, no overlap at the tested viewport.
-- Color and contrast: neutral light surfaces, blue selected/primary state, visible disabled state, red inline error state.
+- Color and contrast: neutral light surfaces, blue selected/primary state, visible disabled state, red inline error state. The dark theme uses a dedicated dark foreground brush on its bright accent button instead of fixed white text.
+- Dark theme verification: launched the published app with `--qa-dark` and confirmed the enabled primary button on the actual WPF screen. The calculated text contrast is 7.26:1 normally and 7.91:1 on hover.
 - Assets: real yt-dlp thumbnail used; no placeholder illustration or CSS/SVG substitute.
 - Interaction: URL inspection is asynchronous; presets, browse, download, cancel, expanders, and clear action are native controls.
 - Accessibility: tab-focusable native controls, system theme support, visible focus cues, resizable window, minimum size guard.

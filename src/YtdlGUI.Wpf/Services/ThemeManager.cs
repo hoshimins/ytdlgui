@@ -25,6 +25,7 @@ public static class ThemeManager
                 ["TextSecondaryBrush"] = "#5F6570",
                 ["AccentBrush"] = "#0F6CBD",
                 ["AccentHoverBrush"] = "#115EA3",
+                ["AccentForegroundBrush"] = "#FFFFFF",
                 ["SuccessBrush"] = "#D86D32",
                 ["ErrorBrush"] = "#C42B1C"
             }
@@ -43,6 +44,7 @@ public static class ThemeManager
                 ["TextSecondaryBrush"] = "#B8BDC5",
                 ["AccentBrush"] = "#60CDFF",
                 ["AccentHoverBrush"] = "#75D5FF",
+                ["AccentForegroundBrush"] = "#00354A",
                 ["SuccessBrush"] = "#FF9F6E",
                 ["ErrorBrush"] = "#FF99A4"
             };
