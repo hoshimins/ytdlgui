@@ -8,6 +8,7 @@
     <Color x:Key="TextSecondaryColor">#5F6570</Color>
     <Color x:Key="AccentColor">#0F6CBD</Color>
     <Color x:Key="AccentHoverColor">#115EA3</Color>
+    <Color x:Key="AccentForegroundColor">#FFFFFF</Color>
     <Color x:Key="SuccessColor">#D86D32</Color>
     <Color x:Key="ErrorColor">#C42B1C</Color>
 
@@ -24,6 +25,7 @@
     <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondaryColor}" />
     <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" />
     <SolidColorBrush x:Key="AccentHoverBrush" Color="{StaticResource AccentHoverColor}" />
+    <SolidColorBrush x:Key="AccentForegroundBrush" Color="{StaticResource AccentForegroundColor}" />
     <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource SuccessColor}" />
     <SolidColorBrush x:Key="ErrorBrush" Color="{StaticResource ErrorColor}" />
 
@@ -55,7 +57,7 @@
 
     <Style x:Key="PrimaryButton" TargetType="Button">
         <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
-        <Setter Property="Foreground" Value="White" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Padding" Value="24,12" />
         <Setter Property="MinHeight" Value="44" />
