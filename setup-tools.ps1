@@ -50,10 +50,16 @@ try {
 
     $downloadedFfmpeg = Get-ChildItem -LiteralPath $ffmpegExtracted -Recurse -Filter "ffmpeg.exe" -File |
         Select-Object -First 1
+    $downloadedFfprobe = Get-ChildItem -LiteralPath $ffmpegExtracted -Recurse -Filter "ffprobe.exe" -File |
+        Select-Object -First 1
     if (-not $downloadedFfmpeg) {
         throw "ダウンロードしたアーカイブに ffmpeg.exe がありません。"
     }
+    if (-not $downloadedFfprobe) {
+        throw "ダウンロードしたアーカイブに ffprobe.exe がありません。"
+    }
     Copy-Item -LiteralPath $downloadedFfmpeg.FullName -Destination (Join-Path $destinationPath "ffmpeg.exe") -Force
+    Copy-Item -LiteralPath $downloadedFfprobe.FullName -Destination (Join-Path $destinationPath "ffprobe.exe") -Force
 
     Write-Host "外部ツールを配置しました: $destinationPath"
     Write-Warning "このフォルダを第三者へ再配布する場合は THIRD_PARTY_NOTICES.md を確認し、GPLの条件を満たしてください。"

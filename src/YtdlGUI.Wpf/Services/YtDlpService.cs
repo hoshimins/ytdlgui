@@ -14,12 +14,14 @@ public sealed class YtDlpService : IYtDlpService
     private static readonly HttpClient HttpClient = CreateHttpClient();
     private readonly string _ytDlpPath;
     private readonly string _ffmpegPath;
+    private readonly string _ffprobePath;
 
     public YtDlpService(string? baseDirectory = null)
     {
         var directory = baseDirectory ?? AppContext.BaseDirectory;
         _ytDlpPath = Path.Combine(directory, "yt-dlp.exe");
         _ffmpegPath = Path.Combine(directory, "ffmpeg.exe");
+        _ffprobePath = Path.Combine(directory, "ffprobe.exe");
     }
 
     public async Task<VideoMetadata> InspectAsync(string url, CancellationToken cancellationToken)
@@ -210,6 +212,13 @@ public sealed class YtDlpService : IYtDlpService
             throw new FileNotFoundException(
                 "ffmpeg.exeがアプリと同じフォルダにありません。リポジトリのsetup-tools.ps1で取得できます。",
                 _ffmpegPath);
+        }
+
+        if (requireFfmpeg && !File.Exists(_ffprobePath))
+        {
+            throw new FileNotFoundException(
+                "ffprobe.exeがアプリと同じフォルダにありません。リポジトリのsetup-tools.ps1で取得できます。",
+                _ffprobePath);
         }
     }
 
