@@ -92,24 +92,35 @@ public sealed class YtDlpService : IYtDlpService
         EnsureToolsAvailable(requireFfmpeg: false);
         var local = await RunCaptureAsync(["--version"], cancellationToken);
         var localVersion = local.Output.Trim();
-        string? latestVersion = null;
+        var latestVersion = await GetLatestVersionAsync(HttpClient, cancellationToken);
 
+        return new YtDlpVersionInfo(localVersion, latestVersion);
+    }
+
+    internal static async Task<string?> GetLatestVersionAsync(
+        HttpClient httpClient,
+        CancellationToken cancellationToken)
+    {
         try
         {
-            using var response = await HttpClient.GetAsync(
+            using var response = await httpClient.GetAsync(
                 "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest",
                 cancellationToken);
             response.EnsureSuccessStatusCode();
             await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
             using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
-            latestVersion = GetString(document.RootElement, "tag_name");
+            return GetString(document.RootElement, "tag_name");
         }
         catch (HttpRequestException)
         {
             // オフラインでもローカルバージョンは表示する。
+            return null;
         }
-
-        return new YtDlpVersionInfo(localVersion, latestVersion);
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // GitHub APIのタイムアウトでもローカルバージョンは表示する。
+            return null;
+        }
     }
 
     public async Task<string> UpdateAsync(CancellationToken cancellationToken)
