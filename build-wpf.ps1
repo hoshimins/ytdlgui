@@ -1,10 +1,15 @@
-param(
+﻿param(
     [string]$OutputDirectory = "artifacts\publish\win-x64"
 )
 
 $ErrorActionPreference = "Stop"
 $projectRoot = (Resolve-Path -LiteralPath $PSScriptRoot).Path
-$publishPath = [IO.Path]::GetFullPath($OutputDirectory, $projectRoot)
+$publishCandidate = if ([IO.Path]::IsPathRooted($OutputDirectory)) {
+    $OutputDirectory
+} else {
+    Join-Path $projectRoot $OutputDirectory
+}
+$publishPath = [IO.Path]::GetFullPath($publishCandidate)
 if (-not $publishPath.StartsWith($projectRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
     throw "出力先はプロジェクト内を指定してください: $publishPath"
 }

@@ -14,6 +14,8 @@ public static class YtDlpCommandBuilder
         url
     ];
 
+    public static IReadOnlyList<string> BuildUpdateArguments() => ["-U"];
+
     public static IReadOnlyList<string> BuildDownloadArguments(
         DownloadRequest request,
         string ffmpegPath)

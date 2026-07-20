@@ -11,7 +11,7 @@ public sealed class JsonSettingsStore : ISettingsStore
     };
 
     private readonly string _settingsPath;
-    private readonly string _legacyConfigPath;
+    private readonly IReadOnlyList<string> _legacyConfigPaths;
 
     public JsonSettingsStore(string? settingsPath = null, string? legacyConfigPath = null)
     {
@@ -19,7 +19,13 @@ public sealed class JsonSettingsStore : ISettingsStore
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "YtdlGUI",
             "settings.json");
-        _legacyConfigPath = legacyConfigPath ?? Path.Combine(AppContext.BaseDirectory, "config.ini");
+        _legacyConfigPaths = legacyConfigPath is not null
+            ? [legacyConfigPath]
+            :
+            [
+                Path.Combine(Path.GetDirectoryName(_settingsPath) ?? string.Empty, "config.ini"),
+                Path.Combine(AppContext.BaseDirectory, "config.ini")
+            ];
     }
 
     public async Task<AppSettings> LoadAsync(CancellationToken cancellationToken = default)
@@ -52,13 +58,27 @@ public sealed class JsonSettingsStore : ISettingsStore
 
     private string? TryReadLegacyOutputDirectory()
     {
-        if (!File.Exists(_legacyConfigPath))
+        foreach (var legacyConfigPath in _legacyConfigPaths.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var outputDirectory = TryReadLegacyOutputDirectory(legacyConfigPath);
+            if (outputDirectory is not null)
+            {
+                return outputDirectory;
+            }
+        }
+
+        return null;
+    }
+
+    private static string? TryReadLegacyOutputDirectory(string legacyConfigPath)
+    {
+        if (!File.Exists(legacyConfigPath))
         {
             return null;
         }
 
         var inSettings = false;
-        foreach (var rawLine in File.ReadLines(_legacyConfigPath))
+        foreach (var rawLine in File.ReadLines(legacyConfigPath))
         {
             var line = rawLine.Trim();
             if (line.StartsWith('[') && line.EndsWith(']'))

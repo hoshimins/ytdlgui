@@ -24,6 +24,24 @@ public sealed class JsonSettingsStoreTests
     }
 
     [TestMethod]
+    public async Task LoadAsync_MigratesLegacyConfigBesideSettingsByDefault()
+    {
+        var outputDirectory = Path.Combine(_temporaryDirectory, "downloads");
+        Directory.CreateDirectory(outputDirectory);
+        var settingsPath = Path.Combine(_temporaryDirectory, "settings.json");
+        var legacyPath = Path.Combine(_temporaryDirectory, "config.ini");
+        await File.WriteAllTextAsync(
+            legacyPath,
+            $"[Settings]{Environment.NewLine}output_directory = {outputDirectory}{Environment.NewLine}");
+        var store = new JsonSettingsStore(settingsPath);
+
+        var settings = await store.LoadAsync();
+
+        Assert.AreEqual(outputDirectory, settings.OutputDirectory);
+        Assert.IsTrue(File.Exists(settingsPath));
+    }
+
+    [TestMethod]
     public async Task LoadAsync_MigratesLegacyOutputDirectory()
     {
         var outputDirectory = Path.Combine(_temporaryDirectory, "downloads");

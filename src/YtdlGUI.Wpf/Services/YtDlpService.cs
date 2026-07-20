@@ -113,7 +113,7 @@ public sealed class YtDlpService : IYtDlpService
     public async Task<string> UpdateAsync(CancellationToken cancellationToken)
     {
         EnsureToolsAvailable(requireFfmpeg: false);
-        var result = await RunCaptureAsync(["-U", "--no-check-certificate"], cancellationToken);
+        var result = await RunCaptureAsync(YtDlpCommandBuilder.BuildUpdateArguments(), cancellationToken);
         if (result.ExitCode != 0)
         {
             throw new InvalidOperationException(BuildFailureMessage("yt-dlpを更新できませんでした。", result.Error));

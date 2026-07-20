@@ -14,8 +14,7 @@ public partial class MainWindow : Window
         var baseDirectory = AppContext.BaseDirectory;
         _viewModel = new MainViewModel(
             new YtDlpService(baseDirectory),
-            new JsonSettingsStore(
-                legacyConfigPath: Path.Combine(baseDirectory, "config.ini")),
+            new JsonSettingsStore(),
             new WindowsFolderPicker());
         DataContext = _viewModel;
         if (Environment.GetCommandLineArgs().Contains("--qa-light", StringComparer.OrdinalIgnoreCase))
