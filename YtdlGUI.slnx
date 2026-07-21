@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/YtdlGUI.Wpf/YtdlGUI.Wpf.csproj" />
+  <Project Path="tests/YtdlGUI.Wpf.Tests/YtdlGUI.Wpf.Tests.csproj" />
+</Solution>
