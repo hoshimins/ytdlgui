@@ -14,12 +14,17 @@ public static class YtDlpCommandBuilder
         url
     ];
 
+    public static IReadOnlyList<string> BuildUpdateArguments() => ["-U"];
+
     public static IReadOnlyList<string> BuildDownloadArguments(
         DownloadRequest request,
         string ffmpegPath)
     {
+        var isWavOutput = request.ConvertAudioToWav &&
+            request.Preset is DownloadPreset.AudioM4a or DownloadPreset.AudioMp3;
+        var escapedOutputDirectory = request.OutputDirectory.Replace("%", "%%", StringComparison.Ordinal);
         var outputTemplate = Path.Combine(
-            request.OutputDirectory,
+            escapedOutputDirectory,
             "%(upload_date)s-%(title)s.%(ext)s");
 
         var arguments = new List<string>
@@ -35,7 +40,7 @@ public static class YtDlpCommandBuilder
             $"download:{ProgressPrefix}|%(progress._percent_str)s|%(progress._speed_str)s|%(progress._eta_str)s|%(progress.downloaded_bytes)s|%(progress.total_bytes_estimate)s"
         };
 
-        if (request.EmbedThumbnail)
+        if (request.EmbedThumbnail && !isWavOutput)
         {
             arguments.Add("--embed-thumbnail");
         }

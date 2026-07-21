@@ -14,12 +14,14 @@ public sealed class YtDlpService : IYtDlpService
     private static readonly HttpClient HttpClient = CreateHttpClient();
     private readonly string _ytDlpPath;
     private readonly string _ffmpegPath;
+    private readonly string _ffprobePath;
 
     public YtDlpService(string? baseDirectory = null)
     {
         var directory = baseDirectory ?? AppContext.BaseDirectory;
         _ytDlpPath = Path.Combine(directory, "yt-dlp.exe");
         _ffmpegPath = Path.Combine(directory, "ffmpeg.exe");
+        _ffprobePath = Path.Combine(directory, "ffprobe.exe");
     }
 
     public async Task<VideoMetadata> InspectAsync(string url, CancellationToken cancellationToken)
@@ -90,30 +92,41 @@ public sealed class YtDlpService : IYtDlpService
         EnsureToolsAvailable(requireFfmpeg: false);
         var local = await RunCaptureAsync(["--version"], cancellationToken);
         var localVersion = local.Output.Trim();
-        string? latestVersion = null;
+        var latestVersion = await GetLatestVersionAsync(HttpClient, cancellationToken);
 
+        return new YtDlpVersionInfo(localVersion, latestVersion);
+    }
+
+    internal static async Task<string?> GetLatestVersionAsync(
+        HttpClient httpClient,
+        CancellationToken cancellationToken)
+    {
         try
         {
-            using var response = await HttpClient.GetAsync(
+            using var response = await httpClient.GetAsync(
                 "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest",
                 cancellationToken);
             response.EnsureSuccessStatusCode();
             await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
             using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
-            latestVersion = GetString(document.RootElement, "tag_name");
+            return GetString(document.RootElement, "tag_name");
         }
         catch (HttpRequestException)
         {
             // オフラインでもローカルバージョンは表示する。
+            return null;
         }
-
-        return new YtDlpVersionInfo(localVersion, latestVersion);
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // GitHub APIのタイムアウトでもローカルバージョンは表示する。
+            return null;
+        }
     }
 
     public async Task<string> UpdateAsync(CancellationToken cancellationToken)
     {
         EnsureToolsAvailable(requireFfmpeg: false);
-        var result = await RunCaptureAsync(["-U", "--no-check-certificate"], cancellationToken);
+        var result = await RunCaptureAsync(YtDlpCommandBuilder.BuildUpdateArguments(), cancellationToken);
         if (result.ExitCode != 0)
         {
             throw new InvalidOperationException(BuildFailureMessage("yt-dlpを更新できませんでした。", result.Error));
@@ -210,6 +223,13 @@ public sealed class YtDlpService : IYtDlpService
             throw new FileNotFoundException(
                 "ffmpeg.exeがアプリと同じフォルダにありません。リポジトリのsetup-tools.ps1で取得できます。",
                 _ffmpegPath);
+        }
+
+        if (requireFfmpeg && !File.Exists(_ffprobePath))
+        {
+            throw new FileNotFoundException(
+                "ffprobe.exeがアプリと同じフォルダにありません。リポジトリのsetup-tools.ps1で取得できます。",
+                _ffprobePath);
         }
     }
 

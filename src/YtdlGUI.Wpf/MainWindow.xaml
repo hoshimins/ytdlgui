@@ -40,6 +40,7 @@
                         <TextBlock Text="動画のURLを入力してください" Style="{StaticResource SectionLabel}" />
                         <Grid>
                             <TextBox Text="{Binding Url, UpdateSourceTrigger=PropertyChanged}"
+                                     IsEnabled="{Binding IsIdle}"
                                      FontSize="16"
                                      MinHeight="48"
                                      Padding="14,10,48,10"
@@ -254,7 +255,7 @@
                 Background="{DynamicResource FooterBrush}"
                 Padding="36,12">
             <Grid>
-                <TextBlock Text="Movie Downloader 2.0" Style="{StaticResource SecondaryText}" />
+                <TextBlock Text="{Binding AppVersionText}" Style="{StaticResource SecondaryText}" />
                 <TextBlock Text="Windows 11 Fluent · .NET 10"
                            Style="{StaticResource SecondaryText}"
                            HorizontalAlignment="Right" />

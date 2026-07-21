@@ -7,6 +7,14 @@ namespace YtdlGUI.Wpf.Tests;
 public sealed class YtDlpCommandBuilderTests
 {
     [TestMethod]
+    public void Update_DoesNotDisableCertificateValidation()
+    {
+        var arguments = YtDlpCommandBuilder.BuildUpdateArguments();
+
+        CollectionAssert.AreEqual(new[] { "-U" }, arguments.ToArray());
+    }
+
+    [TestMethod]
     public void VideoPreset_PreservesH264Mp4AndDatePrefixedOutput()
     {
         var request = new DownloadRequest(
@@ -23,6 +31,29 @@ public sealed class YtDlpCommandBuilderTests
         CollectionAssert.Contains(arguments.ToList(), "mp4");
         CollectionAssert.Contains(arguments.ToList(), "--embed-thumbnail");
         StringAssert.Contains(string.Join(' ', arguments), "%(upload_date)s-%(title)s.%(ext)s");
+    }
+
+    [TestMethod]
+    public void OutputDirectory_WithPercentEscapesLiteralPercent()
+    {
+        const string outputDirectory = @"C:\work\100%";
+        var request = new DownloadRequest(
+            "https://example.com/video",
+            DownloadPreset.VideoMp4,
+            outputDirectory,
+            false,
+            false,
+            false);
+
+        var arguments = YtDlpCommandBuilder.BuildDownloadArguments(request, @"C:\Tools\ffmpeg.exe");
+        var argumentList = arguments.ToList();
+        var outputIndex = argumentList.IndexOf("--output");
+
+        Assert.IsGreaterThanOrEqualTo(0, outputIndex);
+        Assert.AreEqual(
+            @"C:\work\100%%\%(upload_date)s-%(title)s.%(ext)s",
+            argumentList[outputIndex + 1]);
+        CollectionAssert.DoesNotContain(argumentList, "--paths");
     }
 
     [TestMethod]
@@ -60,5 +91,21 @@ public sealed class YtDlpCommandBuilderTests
         var audioFormatIndex = arguments.ToList().IndexOf("--audio-format");
 
         Assert.AreEqual("wav", arguments[audioFormatIndex + 1]);
+    }
+
+    [TestMethod]
+    public void AudioPreset_WavDoesNotEmbedThumbnail()
+    {
+        var request = new DownloadRequest(
+            "https://example.com/video",
+            DownloadPreset.AudioMp3,
+            @"C:\Downloads",
+            true,
+            false,
+            true);
+
+        var arguments = YtDlpCommandBuilder.BuildDownloadArguments(request, @"C:\Tools\ffmpeg.exe");
+
+        CollectionAssert.DoesNotContain(arguments.ToList(), "--embed-thumbnail");
     }
 }
