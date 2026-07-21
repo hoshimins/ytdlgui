@@ -40,6 +40,7 @@
                         <TextBlock Text="動画のURLを入力してください" Style="{StaticResource SectionLabel}" />
                         <Grid>
                             <TextBox Text="{Binding Url, UpdateSourceTrigger=PropertyChanged}"
+                                     IsEnabled="{Binding IsNotDownloading}"
                                      FontSize="16"
                                      MinHeight="48"
                                      Padding="14,10,48,10"
