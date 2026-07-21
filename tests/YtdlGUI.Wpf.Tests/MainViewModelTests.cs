@@ -86,6 +86,76 @@ public sealed class MainViewModelTests
         await WaitUntilAsync(() => !viewModel.IsDownloading, TimeSpan.FromSeconds(3));
     }
 
+    [TestMethod]
+    public async Task Update_IsMutuallyExclusiveWithInspectionAndDownload()
+    {
+        const string originalUrl = "https://example.com/video";
+        var ytDlpService = new MutualExclusionYtDlpService();
+        using var viewModel = new MainViewModel(
+            ytDlpService,
+            new TestSettingsStore(),
+            new TestFolderPicker())
+        {
+            OutputDirectory = Path.GetTempPath(),
+            Url = originalUrl
+        };
+
+        await ytDlpService.InspectStarted.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        viewModel.UpdateYtDlpCommand.Execute(null);
+
+        try
+        {
+            await WaitUntilAsync(() => viewModel.IsUpdating, TimeSpan.FromSeconds(3));
+            viewModel.Url = "https://example.com/other";
+            viewModel.DownloadCommand.Execute(null);
+            await Task.Delay(100);
+
+            Assert.AreEqual(originalUrl, viewModel.Url);
+            Assert.AreEqual(0, ytDlpService.DownloadCallCount);
+            Assert.IsFalse(ytDlpService.UpdateStarted.Task.IsCompleted);
+
+            ytDlpService.ReleaseInspection.TrySetResult();
+            await ytDlpService.UpdateStarted.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        }
+        finally
+        {
+            ytDlpService.ReleaseInspection.TrySetResult();
+            ytDlpService.ReleaseUpdate.TrySetResult();
+        }
+
+        await WaitUntilAsync(() => !viewModel.IsUpdating, TimeSpan.FromSeconds(3));
+    }
+
+    [TestMethod]
+    public async Task Update_WaitsForStartupVersionCheck()
+    {
+        var ytDlpService = new BlockingVersionCheckYtDlpService();
+        using var viewModel = new MainViewModel(
+            ytDlpService,
+            new TestSettingsStore(),
+            new TestFolderPicker());
+
+        await ytDlpService.VersionCheckStarted.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        viewModel.UpdateYtDlpCommand.Execute(null);
+
+        try
+        {
+            await WaitUntilAsync(() => viewModel.IsUpdating, TimeSpan.FromSeconds(3));
+            await Task.Delay(100);
+            Assert.IsFalse(ytDlpService.UpdateStarted.Task.IsCompleted);
+
+            ytDlpService.ReleaseVersionCheck.TrySetResult();
+            await ytDlpService.UpdateStarted.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        }
+        finally
+        {
+            ytDlpService.ReleaseVersionCheck.TrySetResult();
+            ytDlpService.ReleaseUpdate.TrySetResult();
+        }
+
+        await WaitUntilAsync(() => !viewModel.IsUpdating, TimeSpan.FromSeconds(3));
+    }
+
     private static async Task WaitUntilAsync(Func<bool> condition, TimeSpan timeout)
     {
         var expiresAt = DateTime.UtcNow + timeout;
@@ -155,6 +225,94 @@ public sealed class MainViewModelTests
 
         public Task<string> UpdateAsync(CancellationToken cancellationToken) =>
             Task.FromResult("更新済み");
+    }
+
+    private sealed class MutualExclusionYtDlpService : IYtDlpService
+    {
+        private int _downloadCallCount;
+
+        public TaskCompletionSource InspectStarted { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource ReleaseInspection { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource UpdateStarted { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource ReleaseUpdate { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public int DownloadCallCount => Volatile.Read(ref _downloadCallCount);
+
+        public async Task<VideoMetadata> InspectAsync(string url, CancellationToken cancellationToken)
+        {
+            InspectStarted.TrySetResult();
+            await ReleaseInspection.Task;
+            return new VideoMetadata("テスト動画", null, null, null, null, null, null);
+        }
+
+        public Task DownloadAsync(
+            DownloadRequest request,
+            IProgress<DownloadProgress> progress,
+            CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref _downloadCallCount);
+            return Task.CompletedTask;
+        }
+
+        public Task<YtDlpVersionInfo> GetVersionInfoAsync(CancellationToken cancellationToken) =>
+            Task.FromResult(new YtDlpVersionInfo("test", "test"));
+
+        public async Task<string> UpdateAsync(CancellationToken cancellationToken)
+        {
+            UpdateStarted.TrySetResult();
+            await ReleaseUpdate.Task;
+            return "更新済み";
+        }
+    }
+
+    private sealed class BlockingVersionCheckYtDlpService : IYtDlpService
+    {
+        private int _versionCheckCount;
+
+        public TaskCompletionSource VersionCheckStarted { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource ReleaseVersionCheck { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource UpdateStarted { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource ReleaseUpdate { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task<VideoMetadata> InspectAsync(string url, CancellationToken cancellationToken) =>
+            Task.FromResult(new VideoMetadata("テスト動画", null, null, null, null, null, null));
+
+        public Task DownloadAsync(
+            DownloadRequest request,
+            IProgress<DownloadProgress> progress,
+            CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public async Task<YtDlpVersionInfo> GetVersionInfoAsync(CancellationToken cancellationToken)
+        {
+            if (Interlocked.Increment(ref _versionCheckCount) == 1)
+            {
+                VersionCheckStarted.TrySetResult();
+                await ReleaseVersionCheck.Task;
+            }
+
+            return new YtDlpVersionInfo("test", "test");
+        }
+
+        public async Task<string> UpdateAsync(CancellationToken cancellationToken)
+        {
+            UpdateStarted.TrySetResult();
+            await ReleaseUpdate.Task;
+            return "更新済み";
+        }
     }
 
     private sealed class TestSettingsStore : ISettingsStore

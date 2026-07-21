@@ -11,6 +11,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private readonly IYtDlpService _ytDlpService;
     private readonly ISettingsStore _settingsStore;
     private readonly IFolderPicker _folderPicker;
+    private readonly SemaphoreSlim _ytDlpOperationLock = new(1, 1);
     private CancellationTokenSource? _inspectCancellation;
     private CancellationTokenSource? _downloadCancellation;
     private string _url = string.Empty;
@@ -19,6 +20,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private VideoMetadata? _metadata;
     private bool _isInspecting;
     private bool _isDownloading;
+    private bool _isUpdating;
     private bool _embedThumbnail = true;
     private bool _downloadSubtitles;
     private bool _convertAudioToWav;
@@ -39,10 +41,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _folderPicker = folderPicker;
         DownloadCommand = new AsyncRelayCommand(DownloadAsync, CanDownload);
         CancelCommand = new RelayCommand(CancelDownload, () => IsDownloading);
-        BrowseCommand = new RelayCommand(Browse, () => !IsDownloading);
-        ClearUrlCommand = new RelayCommand(() => Url = string.Empty, () => !IsDownloading);
+        BrowseCommand = new RelayCommand(Browse, () => IsIdle);
+        ClearUrlCommand = new RelayCommand(() => Url = string.Empty, () => IsIdle);
         OpenFolderCommand = new RelayCommand(OpenOutputFolder, () => Directory.Exists(OutputDirectory));
-        UpdateYtDlpCommand = new AsyncRelayCommand(UpdateYtDlpAsync, () => !IsDownloading);
+        UpdateYtDlpCommand = new AsyncRelayCommand(UpdateYtDlpAsync, () => IsIdle);
         _ = InitializeAsync();
     }
 
@@ -51,7 +53,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         get => _url;
         set
         {
-            if (IsDownloading)
+            if (!IsIdle)
             {
                 OnPropertyChanged();
                 return;
@@ -152,12 +154,28 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             if (SetProperty(ref _isDownloading, value))
             {
                 OnPropertyChanged(nameof(IsNotDownloading));
+                OnPropertyChanged(nameof(IsIdle));
                 NotifyCommands();
             }
         }
     }
 
     public bool IsNotDownloading => !IsDownloading;
+
+    public bool IsUpdating
+    {
+        get => _isUpdating;
+        private set
+        {
+            if (SetProperty(ref _isUpdating, value))
+            {
+                OnPropertyChanged(nameof(IsIdle));
+                NotifyCommands();
+            }
+        }
+    }
+
+    public bool IsIdle => !IsDownloading && !IsUpdating;
 
     public bool EmbedThumbnail
     {
@@ -249,8 +267,11 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             StatusText = "設定エラー";
         }
 
+        var lockTaken = false;
         try
         {
+            await _ytDlpOperationLock.WaitAsync();
+            lockTaken = true;
             var version = await _ytDlpService.GetVersionInfoAsync(CancellationToken.None);
             VersionText = version.IsUpdateAvailable
                 ? $"yt-dlp {version.LocalVersion}（{version.LatestVersion}へ更新可能）"
@@ -260,6 +281,13 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         {
             VersionText = "yt-dlpを確認できません";
             AddLog(exception.Message);
+        }
+        finally
+        {
+            if (lockTaken)
+            {
+                _ytDlpOperationLock.Release();
+            }
         }
     }
 
@@ -285,9 +313,12 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private async Task InspectAfterDelayAsync(string url, CancellationToken cancellationToken)
     {
+        var lockTaken = false;
         try
         {
             await Task.Delay(600, cancellationToken);
+            await _ytDlpOperationLock.WaitAsync(cancellationToken);
+            lockTaken = true;
             IsInspecting = true;
             StatusText = "URLを解析しています…";
             var metadata = await _ytDlpService.InspectAsync(url, cancellationToken);
@@ -316,6 +347,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
         finally
         {
+            if (lockTaken)
+            {
+                _ytDlpOperationLock.Release();
+            }
             IsInspecting = false;
             NotifyCommands();
         }
@@ -340,6 +375,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         StatusText = "ダウンロードを開始しています…";
         LogLines.Clear();
 
+        var lockTaken = false;
         try
         {
             await SaveSettingsAsync();
@@ -351,6 +387,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                 DownloadSubtitles,
                 ConvertAudioToWav);
             var progress = new Progress<DownloadProgress>(ApplyProgress);
+            await _ytDlpOperationLock.WaitAsync(_downloadCancellation.Token);
+            lockTaken = true;
             await _ytDlpService.DownloadAsync(request, progress, _downloadCancellation.Token);
             ProgressPercentage = 100;
             StatusText = "ダウンロードが完了しました";
@@ -368,6 +406,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
         finally
         {
+            if (lockTaken)
+            {
+                _ytDlpOperationLock.Release();
+            }
             _downloadCancellation.Dispose();
             _downloadCancellation = null;
             IsDownloading = false;
@@ -429,9 +471,15 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private async Task UpdateYtDlpAsync()
     {
         ErrorMessage = string.Empty;
+        IsUpdating = true;
+        CancelInspection();
+        IsInspecting = false;
         StatusText = "yt-dlpを更新しています…";
+        var lockTaken = false;
         try
         {
+            await _ytDlpOperationLock.WaitAsync();
+            lockTaken = true;
             var result = await _ytDlpService.UpdateAsync(CancellationToken.None);
             AddLog(result);
             var version = await _ytDlpService.GetVersionInfoAsync(CancellationToken.None);
@@ -443,6 +491,14 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             ErrorMessage = exception.Message;
             StatusText = "yt-dlpを更新できません";
             AddLog(exception.ToString());
+        }
+        finally
+        {
+            if (lockTaken)
+            {
+                _ytDlpOperationLock.Release();
+            }
+            IsUpdating = false;
         }
     }
 
@@ -463,7 +519,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         return true;
     }
 
-    private bool CanDownload() => IsNotDownloading && IsValidHttpUrl(Url) && Directory.Exists(OutputDirectory);
+    private bool CanDownload() => IsIdle && IsValidHttpUrl(Url) && Directory.Exists(OutputDirectory);
 
     private async Task SaveSettingsAsync() =>
         await _settingsStore.SaveAsync(new AppSettings(OutputDirectory, EmbedThumbnail, DownloadSubtitles));
