@@ -51,6 +51,12 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         get => _url;
         set
         {
+            if (IsDownloading)
+            {
+                OnPropertyChanged();
+                return;
+            }
+
             if (!SetProperty(ref _url, value))
             {
                 return;
@@ -126,9 +132,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     }
 
     public bool HasMetadata => Metadata is not null;
-    public string DurationText => Metadata?.Duration is { } duration
-        ? duration.TotalHours >= 1 ? duration.ToString(@"h\:mm\:ss") : duration.ToString(@"m\:ss")
-        : "—";
+    public string DurationText => FormatDuration(Metadata?.Duration);
     public string ResolutionText => Metadata is { Width: { } width, Height: { } height }
         ? $"{width} × {height}"
         : "—";
@@ -261,9 +265,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private void ScheduleInspection(string value)
     {
-        _inspectCancellation?.Cancel();
-        _inspectCancellation?.Dispose();
-        _inspectCancellation = null;
+        CancelInspection();
 
         var normalizedValue = value.Trim();
 
@@ -302,7 +304,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
         catch (Exception exception)
         {
-            if (!string.Equals(Url.Trim(), url, StringComparison.Ordinal))
+            if (cancellationToken.IsCancellationRequested ||
+                IsDownloading ||
+                !string.Equals(Url.Trim(), url, StringComparison.Ordinal))
             {
                 return;
             }
@@ -328,6 +332,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         _downloadCancellation = new CancellationTokenSource(TimeSpan.FromMinutes(10));
         IsDownloading = true;
+        CancelInspection();
+        IsInspecting = false;
         ProgressPercentage = 0;
         Speed = "—";
         Eta = "—";
@@ -466,6 +472,29 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         Uri.TryCreate(value.Trim(), UriKind.Absolute, out var uri) &&
         (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
 
+    internal static string FormatDuration(TimeSpan? duration)
+    {
+        if (duration is null)
+        {
+            return "—";
+        }
+
+        if (duration.Value.TotalHours >= 1)
+        {
+            var totalHours = (long)duration.Value.TotalHours;
+            return $"{totalHours}:{duration.Value.Minutes:00}:{duration.Value.Seconds:00}";
+        }
+
+        return duration.Value.ToString(@"m\:ss");
+    }
+
+    private void CancelInspection()
+    {
+        _inspectCancellation?.Cancel();
+        _inspectCancellation?.Dispose();
+        _inspectCancellation = null;
+    }
+
     private void AddLog(string line)
     {
         if (string.IsNullOrWhiteSpace(line))
@@ -491,8 +520,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
-        _inspectCancellation?.Cancel();
-        _inspectCancellation?.Dispose();
+        CancelInspection();
         _downloadCancellation?.Cancel();
         _downloadCancellation?.Dispose();
     }
