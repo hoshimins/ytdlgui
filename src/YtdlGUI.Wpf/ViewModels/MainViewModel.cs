@@ -299,10 +299,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         if (!IsValidHttpUrl(normalizedValue))
         {
-            if (!string.IsNullOrWhiteSpace(value))
-            {
-                StatusText = "URLを入力してください";
-            }
+            StatusText = "URLを入力してください";
             return;
         }
 

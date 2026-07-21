@@ -53,6 +53,27 @@ public sealed class MainViewModelTests
     }
 
     [TestMethod]
+    public async Task Url_ClearedResetsMetadataAndStatus()
+    {
+        var ytDlpService = new RecordingYtDlpService();
+        using var viewModel = new MainViewModel(
+            ytDlpService,
+            new TestSettingsStore(),
+            new TestFolderPicker())
+        {
+            Url = "https://example.com/video"
+        };
+
+        await ytDlpService.InspectedUrl.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        await WaitUntilAsync(() => viewModel.HasMetadata, TimeSpan.FromSeconds(3));
+
+        viewModel.Url = string.Empty;
+
+        Assert.IsFalse(viewModel.HasMetadata);
+        Assert.AreEqual("URLを入力してください", viewModel.StatusText);
+    }
+
+    [TestMethod]
     public async Task Download_PreventsUrlChangeAndPendingInspection()
     {
         const string originalUrl = "https://example.com/video";
