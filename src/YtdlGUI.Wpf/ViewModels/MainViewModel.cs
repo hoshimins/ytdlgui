@@ -267,8 +267,11 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             StatusText = "設定エラー";
         }
 
+        var lockTaken = false;
         try
         {
+            await _ytDlpOperationLock.WaitAsync();
+            lockTaken = true;
             var version = await _ytDlpService.GetVersionInfoAsync(CancellationToken.None);
             VersionText = version.IsUpdateAvailable
                 ? $"yt-dlp {version.LocalVersion}（{version.LatestVersion}へ更新可能）"
@@ -278,6 +281,13 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         {
             VersionText = "yt-dlpを確認できません";
             AddLog(exception.Message);
+        }
+        finally
+        {
+            if (lockTaken)
+            {
+                _ytDlpOperationLock.Release();
+            }
         }
     }
 
